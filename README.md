@@ -4,7 +4,7 @@
 
 Green Ops is an autonomous agent that audits your codebase for bloated dependencies, calculates the carbon cost of each, and recommends leaner native alternatives. It runs locally or as a GitHub Actions CI step, producing a structured Architect's Report on every push.
 
----
+-----
 
 ## How It Works
 
