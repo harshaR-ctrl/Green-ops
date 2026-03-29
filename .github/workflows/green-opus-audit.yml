@@ -1,0 +1,31 @@
+name: Green Ops Audit
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install Dependencies
+      run: npm install
+
+    - name: Run Green Ops Agent
+      env:
+        GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      run: node run.js > architect-report.md
+
+    - name: Post Report to GitHub Summary
+      run: cat architect-report.md >> $GITHUB_STEP_SUMMARY
