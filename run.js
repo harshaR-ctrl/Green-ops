@@ -5,11 +5,15 @@
  * via the OpenAI Node.js client library.
  */
 
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { readFileSync, existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { config } from "dotenv";
 import OpenAI from "openai";
 import { calculateSavings } from "./tools/carbon-calc.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -17,28 +21,28 @@ import { calculateSavings } from "./tools/carbon-calc.js";
 config();
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
-if (!GROQ_API_KEY) {
-  console.error("[FATAL] GROQ_API_KEY is not set. Export it or add it to .env");
-  process.exit(1);
-}
-
-// ---------------------------------------------------------------------------
-// OpenAI client pointed at the Groq inference endpoint
-// ---------------------------------------------------------------------------
-const client = new OpenAI({
-  apiKey: GROQ_API_KEY,
-  baseURL: "https://api.groq.com/openai/v1",
-});
 
 // ---------------------------------------------------------------------------
 // Load persona files
 // ---------------------------------------------------------------------------
 function loadPersonaFiles() {
-  const soulPath = resolve("SOUL.md");
-  const rulesPath = resolve("RULES.md");
+  const soulPath = join(__dirname, "SOUL.md");
+  const rulesPath = join(__dirname, "RULES.md");
 
-  const soul = readFileSync(soulPath, "utf-8");
-  const rules = readFileSync(rulesPath, "utf-8");
+  let soul = "You are a GreenOps AI agent focused on codebase decarbonization.";
+  let rules = "- Calculate carbon delta.\n- Avoid emojis.\n- Provide strict output.";
+
+  if (existsSync(soulPath)) {
+    soul = readFileSync(soulPath, "utf-8");
+  } else {
+    console.warn("[WARN] SOUL.md not found, using default fallback persona.");
+  }
+
+  if (existsSync(rulesPath)) {
+    rules = readFileSync(rulesPath, "utf-8");
+  } else {
+    console.warn("[WARN] RULES.md not found, using default fallback rules.");
+  }
 
   return [soul, rules].join("\n\n---\n\n");
 }
@@ -47,16 +51,31 @@ function loadPersonaFiles() {
 // Main
 // ---------------------------------------------------------------------------
 async function main() {
+  if (!GROQ_API_KEY) {
+    console.error("\n[FATAL] GROQ_API_KEY is not set.");
+    console.error("Please provide it via environment variable, e.g.:");
+    console.error("  GROQ_API_KEY=your_key gitagent run -r <repo-url> -a greenops\n");
+    return;
+  }
+
+  // ---------------------------------------------------------------------------
+  // OpenAI client pointed at the Groq inference endpoint
+  // ---------------------------------------------------------------------------
+  const client = new OpenAI({
+    apiKey: GROQ_API_KEY,
+    baseURL: "https://api.groq.com/openai/v1",
+  });
+
   // 1. Build the system prompt from local persona files
   let systemPrompt;
   try {
     systemPrompt = loadPersonaFiles();
   } catch (fileError) {
     console.error(
-      "[ERROR] Failed to read persona files (SOUL.md / RULES.md):",
+      "[ERROR] Failed to construct system prompt:",
       fileError.message
     );
-    process.exit(1);
+    return;
   }
 
   // 2. Define the user-facing analysis prompt
@@ -83,13 +102,13 @@ async function main() {
     });
   } catch (apiError) {
     console.error("[ERROR] Groq API call failed:", apiError.message);
-    process.exit(1);
+    return;
   }
 
   const report = response.choices?.[0]?.message?.content;
   if (!report) {
     console.error("[ERROR] Received an empty response from the model.");
-    process.exit(1);
+    return;
   }
 
   console.log(report);

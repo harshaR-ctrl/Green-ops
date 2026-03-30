@@ -1,0 +1,6 @@
+{
+  "name": "greenops",
+  "description": "GreenOps AI agent for reducing carbon impact of code.",
+  "runtime": "node",
+  "entry": "run.js"
+}

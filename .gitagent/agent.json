@@ -1,0 +1,7 @@
+{
+  "$schema": "https://gitagent.com/schemas/agent-v1.json",
+  "name": "greenops",
+  "description": "High-reasoning AI agent for codebase decarbonization.",
+  "runtime": "node",
+  "entry": "run.js"
+}
